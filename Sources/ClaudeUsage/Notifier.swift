@@ -10,10 +10,13 @@ import UserNotifications
 @MainActor
 final class Notifier {
     private static let requestID = "five-hour-reset"
-    private static let defaultsKey = "lastScheduledResetsAt"
 
     private var useUserNotifications = false
     private var fallbackTask: Task<Void, Never>?
+    // In-memory only: scheduling is idempotent (same UN request ID replaces
+    // itself; fallback task is cancelled and recreated), so after a restart we
+    // simply re-schedule. Persisting this would suppress real notifications.
+    private var scheduledResetsAt: Date?
 
     private var isBundled: Bool { Bundle.main.bundleIdentifier != nil }
 
@@ -26,6 +29,9 @@ final class Notifier {
             Task { @MainActor in
                 self.useUserNotifications = granted && error == nil
                 if let error { NSLog("Notifier: auth failed (\(error)), using osascript fallback") }
+                // Auth may arrive after the first poll already scheduled via
+                // the fallback path — allow the next poll to reschedule via UN.
+                if self.useUserNotifications { self.scheduledResetsAt = nil }
             }
         }
     }
@@ -34,11 +40,8 @@ final class Notifier {
         // A null resets_at means no active session; any previously scheduled
         // notification still corresponds to a real window expiry — leave it.
         guard let resetsAt, resetsAt > Date() else { return }
-
-        let defaults = UserDefaults.standard
-        let last = defaults.object(forKey: Self.defaultsKey) as? Date
-        guard last != resetsAt else { return }
-        defaults.set(resetsAt, forKey: Self.defaultsKey)
+        guard scheduledResetsAt != resetsAt else { return }
+        scheduledResetsAt = resetsAt
 
         schedule(at: resetsAt,
                  title: "Claude session refreshed",
