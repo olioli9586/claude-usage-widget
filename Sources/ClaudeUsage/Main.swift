@@ -5,15 +5,18 @@ enum Main {
     static func main() async {
         if CommandLine.arguments.contains("--once") {
             await runOnce()
+        } else if CommandLine.arguments.contains("--refresh") {
+            await runRefresh()
         } else {
             ClaudeUsageApp.main()
         }
     }
 
     /// Headless smoke test: fetch once, print the result, write the snapshot.
+    @MainActor
     static func runOnce() async {
         do {
-            let token = try KeychainToken.accessToken()
+            let token = try await TokenManager().validAccessToken()
             print("token: ...\(token.suffix(8))")
             let client = UsageAPIClient()
             let raw = try await client.fetchRaw(token: token)
@@ -32,6 +35,22 @@ enum Main {
             let snapshot = UsageSnapshot(fetchedAt: Date(), status: .ok, fiveHour: five, sevenDay: seven)
             SnapshotStore.write(snapshot)
             print("snapshot written to \(SnapshotStore.fileURL.path)")
+        } catch {
+            FileHandle.standardError.write(Data("error: \(error.localizedDescription)\n".utf8))
+            exit(1)
+        }
+    }
+
+    /// Force one token refresh and verify the Keychain write-back round-trips.
+    @MainActor
+    static func runRefresh() async {
+        do {
+            let before = try KeychainToken.read()
+            print("before: token ...\(before.accessToken.suffix(8)), expires \(before.expiresAt?.description ?? "?")")
+            let token = try await TokenManager().refreshedToken()
+            let after = try KeychainToken.read()
+            print("after:  token ...\(after.accessToken.suffix(8)), expires \(after.expiresAt?.description ?? "?")")
+            print("keychain round-trip ok: \(after.accessToken == token), refresh token rotated: \(before.refreshToken != after.refreshToken)")
         } catch {
             FileHandle.standardError.write(Data("error: \(error.localizedDescription)\n".utf8))
             exit(1)

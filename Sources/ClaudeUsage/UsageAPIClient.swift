@@ -7,7 +7,7 @@ enum UsageAPIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unauthorized: return "Token rejected (401). Open Claude Code so it can refresh your login."
+        case .unauthorized: return "Token rejected (401) even after refresh. Open Claude Code once to log in again."
         case .rateLimited: return "Usage API is rate limiting (429). Backing off."
         case .http(let code): return "Usage API returned HTTP \(code)."
         }

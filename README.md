@@ -27,7 +27,7 @@ Menu bar:  ◉ 16%
 
 - macOS 14+
 - Swift toolchain (Xcode Command Line Tools are enough — no Xcode needed)
-- Claude Code installed and logged in (the app reads the OAuth token Claude Code stores in your Keychain)
+- Claude Code installed and logged in once (the app reads — and keeps refreshed — the OAuth token Claude Code stores in your Keychain)
 
 ## Install
 
@@ -41,7 +41,8 @@ Other targets: `make once` (one-shot fetch printed to the terminal), `make run` 
 
 ## How it works
 
-- Reads your Claude Code OAuth token from the login Keychain (`security find-generic-password -s "Claude Code-credentials" -w`). It never refreshes or stores the token itself — Claude Code owns it.
+- Reads your Claude Code OAuth token from the login Keychain (`security find-generic-password -s "Claude Code-credentials" -w`).
+- When the access token is near expiry, it refreshes it itself using the same OAuth refresh flow, endpoint, and client ID as Claude Code, and writes the new tokens back to the shared Keychain entry (all other fields preserved) — so the app keeps working even if you only ever use the Claude desktop app, and Claude Code stays logged in too. Refreshes are single-flighted and the Keychain is re-read just before refreshing to avoid racing Claude Code. Test it with `.build/release/ClaudeUsage --refresh`.
 - Polls `https://api.anthropic.com/api/oauth/usage` — the same undocumented endpoint that powers Claude Code's `/usage` command — every ~3 minutes with exponential backoff on 429s, and immediately after your Mac wakes from sleep.
 - Writes the latest reading to `~/Library/Application Support/ClaudeUsage/snapshot.json` (atomic), which is the contract for the planned desktop widget (see below).
 - Schedules the "session refreshed" notification at the exact `resets_at` time via `UNCalendarNotificationTrigger`, with an in-app timer + `osascript` fallback.

@@ -8,6 +8,7 @@ final class Poller {
     private(set) var lastError: String?
 
     private let client = UsageAPIClient()
+    private let tokens = TokenManager()
     let notifier = Notifier()
     private var loopTask: Task<Void, Never>?
     private var isFetching = false
@@ -54,8 +55,7 @@ final class Poller {
         defer { isFetching = false }
 
         do {
-            let token = try KeychainToken.accessToken()
-            let (five, seven) = try await client.fetch(token: token)
+            let (five, seven) = try await fetchWindows()
             snapshot = UsageSnapshot(fetchedAt: Date(), status: .ok, fiveHour: five, sevenDay: seven)
             lastError = nil
             consecutiveRateLimits = 0
@@ -74,9 +74,23 @@ final class Poller {
                 degrade(to: .error)
             }
             lastError = error.localizedDescription
+        } catch let error as TokenError {
+            degrade(to: .authNeeded)
+            lastError = error.localizedDescription
         } catch {
             degrade(to: .error)
             lastError = error.localizedDescription
+        }
+    }
+
+    /// Fetch with a valid token; if the API still rejects it (revoked
+    /// server-side despite an unexpired expiry), force one refresh and retry.
+    private func fetchWindows() async throws -> (fiveHour: UsageWindow?, sevenDay: UsageWindow?) {
+        let token = try await tokens.validAccessToken()
+        do {
+            return try await client.fetch(token: token)
+        } catch UsageAPIError.unauthorized {
+            return try await client.fetch(token: tokens.refreshedToken())
         }
     }
 

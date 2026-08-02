@@ -70,7 +70,7 @@ struct MenuView: View {
                 .font(.caption)
                 .foregroundStyle(.orange)
         case .authNeeded:
-            Text("Open Claude Code to refresh your login")
+            Text("Login expired — open Claude Code once to log in again")
                 .font(.caption)
                 .foregroundStyle(.red)
         case .error:
