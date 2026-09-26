@@ -13,6 +13,7 @@ struct MenuView: View {
             UsageBar(title: "Weekly", window: poller.snapshot.sevenDay)
 
             countdown
+            weeklyReset
 
             statusLine
 
@@ -56,6 +57,23 @@ struct MenuView: View {
             }
         } else {
             noActiveSession
+        }
+    }
+
+    /// When the 7-day window rolls over, from the same usage response
+    /// (`seven_day.resets_at`). Hidden when the API reports no reset time.
+    @ViewBuilder
+    private var weeklyReset: some View {
+        if let resetsAt = poller.snapshot.sevenDay?.resetsAt {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if let text = ResetFormat.weeklyReset(resetsAt: resetsAt, now: context.date) {
+                    Label(text, systemImage: "calendar")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85) // "Wed 12:00 PM · 6d 23h" in 12h locales
+                }
+            }
         }
     }
 
