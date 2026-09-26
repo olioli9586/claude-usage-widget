@@ -15,7 +15,8 @@ final class Poller {
     private var consecutiveRateLimits = 0
     private var retryAfterHint: TimeInterval?
 
-    static let baseInterval: TimeInterval = 180
+    nonisolated static let baseInterval: TimeInterval = 180
+    nonisolated static let maxRetryAfter: TimeInterval = 3600
 
     init() {
         snapshot = SnapshotStore.read() ?? .placeholder
@@ -42,11 +43,19 @@ final class Poller {
     }
 
     private func nextDelay() -> TimeInterval {
+        Self.delay(consecutiveRateLimits: consecutiveRateLimits, retryAfter: retryAfterHint)
+    }
+
+    /// Seconds until the next poll: exponential backoff (1m, 2m, 4m, ... up to
+    /// 30m) while rate limited, honoring a longer Retry-After up to an hour;
+    /// otherwise the base interval with jitter.
+    nonisolated static func delay(consecutiveRateLimits: Int, retryAfter: TimeInterval?,
+                      jitter: TimeInterval = Double.random(in: -15...15)) -> TimeInterval {
         if consecutiveRateLimits > 0 {
             let backoff = min(60 * pow(2, Double(consecutiveRateLimits - 1)), 1800)
-            return max(backoff, retryAfterHint ?? 0)
+            return max(backoff, min(retryAfter ?? 0, maxRetryAfter))
         }
-        return Self.baseInterval + Double.random(in: -15...15)
+        return baseInterval + jitter
     }
 
     private func pollOnce() async {
