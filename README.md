@@ -37,7 +37,7 @@ make install    # builds, bundles, signs (ad-hoc), copies to /Applications, laun
 
 On first run macOS may show a Keychain dialog — click **Always Allow**. If asked about notifications, allow them so the session-reset alert can fire.
 
-Other targets: `make once` (one-shot fetch printed to the terminal), `make run` (run without installing), `make clean`.
+Other targets: `make once` (one-shot fetch printed to the terminal), `make run` (run without installing), `make test` (unit tests, no network or Keychain access), `make clean`.
 
 ## How it works
 

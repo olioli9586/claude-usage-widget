@@ -3,7 +3,17 @@ BUILD_DIR = .build/release
 DIST = dist/$(APP_NAME).app
 INSTALL_DIR = /Applications
 
-.PHONY: build bundle install run once clean
+# Command Line Tools ship swift-testing outside the default search paths (and
+# without its Foundation cross-import overlay), so point swift at it there.
+# With full Xcode selected, plain `swift test` works.
+CLT_FRAMEWORKS = /Library/Developer/CommandLineTools/Library/Developer/Frameworks
+ifeq ($(shell xcode-select -p 2>/dev/null),/Library/Developer/CommandLineTools)
+TEST_FLAGS = -Xswiftc -F -Xswiftc $(CLT_FRAMEWORKS) \
+	-Xswiftc -Xfrontend -Xswiftc -disable-cross-import-overlays \
+	-Xlinker -rpath -Xlinker $(CLT_FRAMEWORKS)
+endif
+
+.PHONY: build bundle install run once test clean
 
 build:
 	swift build -c release
@@ -26,6 +36,9 @@ run: bundle
 
 once:
 	swift run -c release $(APP_NAME) --once
+
+test:
+	swift test $(TEST_FLAGS)
 
 clean:
 	rm -rf .build dist
