@@ -40,22 +40,29 @@ struct MenuView: View {
         .frame(width: 260)
     }
 
+    // The reset check runs on every tick, not just when the menu renders:
+    // otherwise the label sat at "0m 00s" from the reset until the next poll.
     @ViewBuilder
     private var countdown: some View {
-        if let resetsAt = poller.snapshot.fiveHour?.resetsAt, resetsAt > Date() {
+        if let resetsAt = poller.snapshot.fiveHour?.resetsAt {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                Label(
-                    "Session resets in \(remaining(until: resetsAt, now: context.date))",
-                    systemImage: "arrow.clockwise"
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                if let text = ResetFormat.sessionCountdown(resetsAt: resetsAt, now: context.date) {
+                    Label(text, systemImage: "arrow.clockwise")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    noActiveSession
+                }
             }
         } else {
-            Label("No active session window", systemImage: "moon.zzz")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            noActiveSession
         }
+    }
+
+    private var noActiveSession: some View {
+        Label("No active session window", systemImage: "moon.zzz")
+            .font(.callout)
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
@@ -79,12 +86,6 @@ struct MenuView: View {
                 .foregroundStyle(.orange)
                 .lineLimit(2)
         }
-    }
-
-    private func remaining(until date: Date, now: Date) -> String {
-        let seconds = max(0, Int(date.timeIntervalSince(now)))
-        let h = seconds / 3600, m = (seconds % 3600) / 60, s = seconds % 60
-        return h > 0 ? String(format: "%dh %02dm", h, m) : String(format: "%dm %02ds", m, s)
     }
 }
 
