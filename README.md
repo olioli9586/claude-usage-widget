@@ -5,22 +5,24 @@ A tiny native macOS menu bar app that shows your Claude Code subscription usage 
 - **5-hour session** utilization (the percentage lives right in the menu bar)
 - **Weekly** utilization
 - **Countdown** until the 5-hour window resets
+- **Weekly reset** day and time (plus countdown) for the 7-day window
 - **Notification** the moment your session refreshes, so you know you're back at full capacity
 
 Built in pure Swift/SwiftUI — no Electron, no log-file parsing. It calls a lightweight API every ~3 minutes and sleeps in between (~0% CPU, a few tens of MB of RAM).
 
 ```
 Menu bar:  ◉ 16%
-┌──────────────────────────────┐
-│ Claude Usage                 │
-│ 5h session  ██░░░░░░░░  16%  │
-│ Weekly      ██████░░░░  64%  │
-│ ⟳ Session resets in 2h 14m   │
-│ Updated 15:12                │
-│ ──────────────────────────── │
-│ Refresh Now  ☐ Launch at Login│
-│ Quit ClaudeUsage             │
-└──────────────────────────────┘
+┌────────────────────────────────────┐
+│ Claude Usage                       │
+│ 5h session  ██░░░░░░░░  16%        │
+│ Weekly      ██████░░░░  64%        │
+│ ⟳ Session resets in 2h 14m         │
+│ ▦ Weekly resets Fri 09:00 · 3d 21h │
+│ Updated 15:12                      │
+│ ────────────────────────────────── │
+│ Refresh Now  ☐ Launch at Login     │
+│ Quit ClaudeUsage                   │
+└────────────────────────────────────┘
 ```
 
 ## Requirements
@@ -37,7 +39,7 @@ make install    # builds, bundles, signs (ad-hoc), copies to /Applications, laun
 
 On first run macOS may show a Keychain dialog — click **Always Allow**. If asked about notifications, allow them so the session-reset alert can fire.
 
-Other targets: `make once` (one-shot fetch printed to the terminal), `make run` (run without installing), `make clean`.
+Other targets: `make once` (one-shot fetch printed to the terminal), `make run` (run without installing), `make test` (unit tests, no network or Keychain access), `make clean`.
 
 ## How it works
 

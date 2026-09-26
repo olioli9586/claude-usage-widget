@@ -44,18 +44,33 @@ struct UsageAPIClient {
         request.timeoutInterval = 15
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        let http = response as! HTTPURLResponse
+        return try Self.validate(data: data, response: response)
+    }
+
+    /// Maps the HTTP status to the body or a typed error.
+    static func validate(data: Data, response: URLResponse) throws -> Data {
+        guard let http = response as? HTTPURLResponse else { throw UsageAPIError.http(0) }
         switch http.statusCode {
         case 200:
             return data
         case 401, 403:
             throw UsageAPIError.unauthorized
         case 429:
-            let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
-            throw UsageAPIError.rateLimited(retryAfter: retryAfter)
+            throw UsageAPIError.rateLimited(retryAfter: retryAfter(http.value(forHTTPHeaderField: "Retry-After")))
         default:
             throw UsageAPIError.http(http.statusCode)
         }
+    }
+
+    /// Retry-After in delta-seconds form. Rejects values that aren't a finite,
+    /// non-negative number ("inf", "nan", "-5"): those would crash or
+    /// misbehave when turned into a sleep Duration.
+    static func retryAfter(_ header: String?) -> TimeInterval? {
+        guard let header,
+              let seconds = TimeInterval(header.trimmingCharacters(in: .whitespaces)),
+              seconds.isFinite, seconds >= 0
+        else { return nil }
+        return seconds
     }
 
     func parse(_ data: Data) throws -> (fiveHour: UsageWindow?, sevenDay: UsageWindow?) {
